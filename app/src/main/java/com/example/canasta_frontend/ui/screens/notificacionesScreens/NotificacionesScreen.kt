@@ -97,9 +97,7 @@ fun NotificacionesScreen(
             }
 
             if (loading) {
-                Box(Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = cs.primary)
-                }
+                com.example.canasta_frontend.ui.components.RowListSkeleton(count = 4)
             } else if (error != null) {
                 Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = cs.surface), border = androidx.compose.foundation.BorderStroke(1.dp, cs.outline)) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {

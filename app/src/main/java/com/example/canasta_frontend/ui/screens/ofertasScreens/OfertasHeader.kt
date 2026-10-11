@@ -3,6 +3,7 @@ package com.example.canasta_frontend.ui.screens.ofertasScreens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -11,9 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.canasta_frontend.ui.theme.*
 
 @Composable
@@ -55,14 +54,12 @@ fun OfertasHeader(
 
         Button(
             onClick = onAddOfferClick,
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+            modifier = Modifier.size(44.dp),
+            contentPadding = PaddingValues(0.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
-            shape = RoundedCornerShape(12.dp)
+            shape = CircleShape
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                Text(text = "Cargar", style = MaterialTheme.typography.labelLarge)
-            }
+            Icon(imageVector = Icons.Default.Add, contentDescription = "Cargar oferta", modifier = Modifier.size(20.dp))
         }
     }
 }

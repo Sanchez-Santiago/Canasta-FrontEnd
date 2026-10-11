@@ -147,9 +147,7 @@ fun GroupSelectorModal(
                 }
 
                 if (isLoading) {
-                    Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = cs.primary)
-                    }
+                    com.example.canasta_frontend.ui.components.RowListSkeleton(count = 3)
                 } else if (loadError != null && grupos.isEmpty()) {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),

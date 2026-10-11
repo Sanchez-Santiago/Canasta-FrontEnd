@@ -82,9 +82,7 @@ fun OfertasScreen() {
         Spacer(modifier = Modifier.height(4.dp))
 
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-            }
+            com.example.canasta_frontend.ui.components.CardListSkeleton(count = 3)
         } else if (ofertas.isEmpty()) {
             Card(
                 modifier = Modifier

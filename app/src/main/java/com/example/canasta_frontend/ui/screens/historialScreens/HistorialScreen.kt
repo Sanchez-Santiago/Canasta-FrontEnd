@@ -42,6 +42,10 @@ fun HistorialScreen(
 
     var uiState by remember(activeGroupId) { mutableStateOf<SyncUiState<List<MovimientoModel>>>(SyncUiState.Loading) }
     var showAddMovementDialog by remember { mutableStateOf(false) }
+    var expandedId by remember { mutableStateOf<Long?>(null) }
+    var editingMov by remember { mutableStateOf<MovimientoModel?>(null) }
+    var savingEdit by remember { mutableStateOf(false) }
+    var editError by remember { mutableStateOf<String?>(null) }
 
     val scrollState = rememberScrollState()
 
@@ -110,9 +114,7 @@ fun HistorialScreen(
 
         when (val state = uiState) {
             is SyncUiState.Loading -> {
-                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
+                com.example.canasta_frontend.ui.components.RowListSkeleton(count = 5)
             }
 
             is SyncUiState.Empty -> {
@@ -202,7 +204,28 @@ fun HistorialScreen(
 
             is SyncUiState.Content -> {
                 state.data.forEach { mov ->
-                    HistorialCardItem(movimiento = mov)
+                    HistorialCardItem(
+                        movimiento = mov,
+                        expanded = expandedId == mov.id,
+                        onToggleExpand = { expandedId = if (expandedId == mov.id) null else mov.id },
+                        onEdit = { editingMov = mov },
+                        onDelete = {
+                            coroutineScope.launch {
+                                when (val r = movementsRepo.deleteMovimiento(mov.id)) {
+                                    is com.example.canasta_frontend.data.repository.RepoResult.Ok -> {
+                                        val gid = activeGroupId ?: return@launch
+                                        val updated = (cachedMovimientosByGroup[gid] ?: emptyList()).filterNot { it.id == mov.id }
+                                        cachedMovimientosByGroup[gid] = updated
+                                        uiState = if (updated.isEmpty()) SyncUiState.Empty else SyncUiState.Content(data = updated, hasLocalData = true)
+                                        onDataChanged()
+                                        Toast.makeText(context, "Movimiento eliminado", Toast.LENGTH_SHORT).show()
+                                    }
+                                    is com.example.canasta_frontend.data.repository.RepoResult.Err ->
+                                        Toast.makeText(context, r.message, Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -235,6 +258,37 @@ fun HistorialScreen(
                     uiState = SyncUiState.Content(data = updated, hasLocalData = true)
                     onDataChanged() // Refresh Resumen screen metrics!
                     Toast.makeText(context, "Movimiento '$name' registrado con éxito", Toast.LENGTH_SHORT).show()
+                }
+            }
+        )
+    }
+
+    val editM = editingMov
+    if (editM != null) {
+        EditMovementDialog(
+            initial = editM,
+            saving = savingEdit,
+            error = editError,
+            onDismiss = { if (!savingEdit) { editingMov = null; editError = null } },
+            onSave = { nombre, desc, monto, cat ->
+                coroutineScope.launch {
+                    savingEdit = true; editError = null
+                    val body = mapOf<String, Any?>("nombre" to nombre, "descripcion" to desc, "monto" to monto, "categoria" to cat)
+                    when (val r = movementsRepo.updateMovimiento(editM.id, body)) {
+                        is com.example.canasta_frontend.data.repository.RepoResult.Ok -> {
+                            val gid = activeGroupId ?: return@launch
+                            val gl = (cachedMovimientosByGroup[gid] ?: emptyList()).map {
+                                if (it.id == editM.id) it.copy(nombre = r.value.nombre, descripcion = r.value.descripcion ?: "", monto = r.value.monto, categoria = r.value.categoria ?: cat) else it
+                            }
+                            cachedMovimientosByGroup[gid] = gl
+                            uiState = SyncUiState.Content(data = gl, hasLocalData = true)
+                            onDataChanged()
+                            editingMov = null
+                            Toast.makeText(context, "Movimiento actualizado", Toast.LENGTH_SHORT).show()
+                        }
+                        is com.example.canasta_frontend.data.repository.RepoResult.Err -> editError = r.message
+                    }
+                    savingEdit = false
                 }
             }
         )

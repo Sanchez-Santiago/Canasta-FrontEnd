@@ -32,6 +32,15 @@ interface CanastaApiService {
     @GET("grupos/{id}")
     suspend fun getGrupoById(@Path("id") id: Long): GrupoDetailResponse
 
+    @PUT("grupos/{id}")
+    suspend fun updateGrupo(@Path("id") id: Long, @Body body: Map<String, String>): GrupoDetailResponse
+
+    @DELETE("grupos/{idGrupo}/miembros/yo")
+    suspend fun abandonarGrupo(@Path("idGrupo") id: Long): ApiResponse<Map<String, Boolean>>
+
+    @DELETE("grupos/{idGrupo}/miembros/{idUsuario}")
+    suspend fun expulsarMiembro(@Path("idGrupo") idGrupo: Long, @Path("idUsuario") idUsuario: Long): ApiResponse<Map<String, Boolean>>
+
     @GET("grupos/{id}/listas")
     suspend fun getListas(@Path("id") idGrupo: Long): ListasResponse
 
@@ -44,11 +53,32 @@ interface CanastaApiService {
     @POST("listas/{id}/productos")
     suspend fun createProducto(@Path("id") idLista: Long, @Body producto: Map<String, @JvmSuppressWildcards Any?>): ProductoDetailResponse
 
+    @PUT("productos-lista/{id}")
+    suspend fun updateProducto(@Path("id") idProducto: Long, @Body body: Map<String, @JvmSuppressWildcards Any?>): ProductoDetailResponse
+
+    @PATCH("productos-lista/{id}/estado")
+    suspend fun cambiarEstadoProducto(@Path("id") idProducto: Long, @Body body: Map<String, String>): ProductoDetailResponse
+
+    @DELETE("productos-lista/{id}")
+    suspend fun deleteProducto(@Path("id") idProducto: Long): Response<Void>
+
+    @PUT("listas/{id}")
+    suspend fun updateLista(@Path("id") idLista: Long, @Body body: Map<String, String>): ListaDetailResponse
+
+    @DELETE("listas/{id}")
+    suspend fun deleteLista(@Path("id") idLista: Long): Response<Void>
+
     @GET("grupos/{id}/movimientos")
     suspend fun getMovimientos(@Path("id") idGrupo: Long): MovimientosResponse
 
     @POST("grupos/{id}/movimientos")
     suspend fun createMovimiento(@Path("id") idGrupo: Long, @Body movimiento: MovimientoEntity): MovimientoDetailResponse
+
+    @PUT("movimientos/{id}")
+    suspend fun updateMovimiento(@Path("id") idMov: Long, @Body body: Map<String, @JvmSuppressWildcards Any?>): MovimientoDetailResponse
+
+    @DELETE("movimientos/{id}")
+    suspend fun deleteMovimiento(@Path("id") idMov: Long): Response<Void>
 
     @GET("grupos/{idGrupo}/miembros")
     suspend fun getMiembros(@Path("idGrupo") idGrupo: Long): ApiResponse<Map<String, List<Map<String, Any?>>>>

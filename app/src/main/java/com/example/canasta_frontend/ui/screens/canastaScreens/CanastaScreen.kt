@@ -44,10 +44,15 @@ fun CanastaScreen(
     val shoppingRepo = remember { ShoppingRepository(context) }
 
     var selectedTab by remember { mutableStateOf("todas") }
+    var filters by remember { mutableStateOf(CanastaFilters()) }
     var expandedListId by remember { mutableStateOf<Long?>(null) }
     
     var showCreateListDialog by remember { mutableStateOf(false) }
     var showAddProductDialog by remember { mutableStateOf(false) }
+    var editingProduct by remember { mutableStateOf<Pair<Long, ProductoModel>?>(null) }
+    var editingListId by remember { mutableStateOf<Long?>(null) }
+    var savingEdit by remember { mutableStateOf(false) }
+    var editError by remember { mutableStateOf<String?>(null) }
 
     var uiState by remember(activeGroupId) { mutableStateOf<SyncUiState<List<ListaModel>>>(SyncUiState.Loading) }
     val scrollState = rememberScrollState()
@@ -125,13 +130,16 @@ fun CanastaScreen(
         else -> cachedListasByGroup[activeGroupId] ?: emptyList()
     }
 
-    val filteredListas = remember(currentListas, selectedTab) {
-        when (selectedTab) {
-            "activa" -> currentListas.filter { it.estado == "activa" }
-            "completada" -> currentListas.filter { it.estado == "completada" }
+    // Filtros legacy por tab + nueva barra (se combinan)
+    val tabFiltered = remember(currentListas, selectedTab) {
+        val t = selectedTab.lowercase().trim()
+        when (t) {
+            "activa" -> currentListas.filter { it.estado.lowercase().trim() == "activa" }
+            "completada" -> currentListas.filter { it.estado.lowercase().trim() == "completada" }
             else -> currentListas
         }
     }
+    val filteredListas = remember(tabFiltered, filters) { tabFiltered.applyCanastaFilters(filters) }
 
     val activeCount = currentListas.count { it.estado == "activa" }
 
@@ -158,13 +166,18 @@ fun CanastaScreen(
                 onTabSelected = { selectedTab = it }
             )
 
+            CanastaFilterBar(
+                filters = filters,
+                onFiltersChange = { filters = it },
+                resultCount = filteredListas.size,
+                totalCount = currentListas.size
+            )
+
             Spacer(modifier = Modifier.height(4.dp))
 
             when (val state = uiState) {
                 is SyncUiState.Loading -> {
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                    }
+                    com.example.canasta_frontend.ui.components.CardListSkeleton(count = 3)
                 }
 
                 is SyncUiState.Empty -> {
@@ -254,8 +267,14 @@ fun CanastaScreen(
 
                 is SyncUiState.Content -> {
                     if (filteredListas.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
-                            Text(text = "No hay canastas en esta categoría.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                        Column(Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = if (filters.hasActive) "Sin resultados para los filtros." else "No hay canastas en esta categoría.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp
+                            )
+                            if (filters.hasActive) {
+                                TextButton(onClick = { filters = CanastaFilters(); selectedTab = "todas" }) { Text("Limpiar filtros") }
+                            }
                         }
                     } else {
                         filteredListas.forEach { lista ->
@@ -266,16 +285,78 @@ fun CanastaScreen(
                                     expandedListId = if (expandedListId == lista.id) null else lista.id
                                 },
                                 onToggleProduct = { listId, prodId ->
-                                    // Toggle product state
+                                    coroutineScope.launch {
+                                        val gid = activeGroupId ?: return@launch
+                                        val groupList = (cachedListasByGroup[gid] ?: emptyList()).toMutableList()
+                                        val li = groupList.indexOfFirst { it.id == listId }
+                                        if (li == -1) return@launch
+                                        val pi = groupList[li].productos.indexOfFirst { it.id == prodId }
+                                        if (pi == -1) return@launch
+                                        val prod = groupList[li].productos[pi]
+                                        val next = if (prod.estado == "comprado") "pendiente" else "comprado"
+                                        // optimista
+                                        groupList[li] = groupList[li].copy(productos = groupList[li].productos.toMutableList().also { it[pi] = prod.copy(estado = next) })
+                                        cachedListasByGroup[gid] = groupList.toList()
+                                        uiState = SyncUiState.Content(data = groupList.toList(), hasLocalData = true)
+                                        when (val r = shoppingRepo.toggleProductoEstado(prodId, next)) {
+                                            is com.example.canasta_frontend.data.repository.RepoResult.Ok -> {
+                                                val updated = r.value
+                                                val gl2 = (cachedListasByGroup[gid] ?: emptyList()).toMutableList()
+                                                val li2 = gl2.indexOfFirst { it.id == listId }
+                                                if (li2 != -1) {
+                                                    val prods = gl2[li2].productos.map { if (it.id == prodId) it.copy(estado = updated.estado) else it }
+                                                    gl2[li2] = gl2[li2].copy(productos = prods)
+                                                    cachedListasByGroup[gid] = gl2.toList()
+                                                    uiState = SyncUiState.Content(data = gl2.toList(), hasLocalData = true)
+                                                }
+                                                onDataChanged()
+                                            }
+                                            is com.example.canasta_frontend.data.repository.RepoResult.Err -> {
+                                                // rollback
+                                                groupList[li] = groupList[li].copy(productos = groupList[li].productos.toMutableList().also { it[pi] = prod })
+                                                cachedListasByGroup[gid] = groupList.toList()
+                                                uiState = SyncUiState.Content(data = groupList.toList(), hasLocalData = true)
+                                                Toast.makeText(context, r.message, Toast.LENGTH_LONG).show()
+                                            }
+                                        }
+                                    }
                                 },
+                                onEditProduct = { listId, prod -> editingProduct = listId to prod },
+                                onDeleteProduct = { listId, prodId ->
+                                    coroutineScope.launch {
+                                        when (val r = shoppingRepo.deleteProducto(prodId)) {
+                                            is com.example.canasta_frontend.data.repository.RepoResult.Ok -> {
+                                                val gid = activeGroupId ?: return@launch
+                                                val gl = (cachedListasByGroup[gid] ?: emptyList()).map { l ->
+                                                    if (l.id == listId) l.copy(productos = l.productos.filterNot { it.id == prodId }) else l
+                                                }
+                                                cachedListasByGroup[gid] = gl
+                                                uiState = SyncUiState.Content(data = gl, hasLocalData = true)
+                                                onDataChanged()
+                                                Toast.makeText(context, "Producto eliminado", Toast.LENGTH_SHORT).show()
+                                            }
+                                            is com.example.canasta_frontend.data.repository.RepoResult.Err ->
+                                                Toast.makeText(context, r.message, Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                },
+                                onEditList = { editingListId = it },
                                 onDeleteList = { listId ->
-                                    val gid = activeGroupId ?: return@CanastaCardItem
-                                    val updated = (cachedListasByGroup[gid] ?: emptyList()).filterNot { it.id == listId }
-                                    cachedListasByGroup[gid] = updated
-                                    if (expandedListId == listId) expandedListId = null
-                                    uiState = if (updated.isEmpty()) SyncUiState.Empty else SyncUiState.Content(data = updated, hasLocalData = true)
-                                    onDataChanged() // Refresh Resumen screen metrics!
-                                    Toast.makeText(context, "Canasta eliminada", Toast.LENGTH_SHORT).show()
+                                    coroutineScope.launch {
+                                        when (val r = shoppingRepo.deleteLista(listId)) {
+                                            is com.example.canasta_frontend.data.repository.RepoResult.Ok -> {
+                                                val gid = activeGroupId ?: return@launch
+                                                val updated = (cachedListasByGroup[gid] ?: emptyList()).filterNot { it.id == listId }
+                                                cachedListasByGroup[gid] = updated
+                                                if (expandedListId == listId) expandedListId = null
+                                                uiState = if (updated.isEmpty()) SyncUiState.Empty else SyncUiState.Content(data = updated, hasLocalData = true)
+                                                onDataChanged()
+                                                Toast.makeText(context, "Canasta eliminada", Toast.LENGTH_SHORT).show()
+                                            }
+                                            is com.example.canasta_frontend.data.repository.RepoResult.Err ->
+                                                Toast.makeText(context, r.message, Toast.LENGTH_LONG).show()
+                                        }
+                                    }
                                 }
                             )
                         }
@@ -344,7 +425,7 @@ fun CanastaScreen(
                     )
                     if (created != null) {
                         val prodModel = ProductoModel(created.id_producto_lista, created.nombre, created.descripcion, created.prioridad, created.cantidad, created.precio_estimado_unitario ?: 0, created.codigo_producto, created.estado)
-                        val gid = activeGroupId
+                        val gid = activeGroupId ?: return@launch
                         val groupList = (cachedListasByGroup[gid] ?: emptyList()).toMutableList()
                         val idx = groupList.indexOfFirst { it.id == currentListId }
                         if (idx != -1) {
@@ -361,5 +442,77 @@ fun CanastaScreen(
                 }
             }
         )
+    }
+
+    val editPair = editingProduct
+    if (editPair != null) {
+        val (listId, prod) = editPair
+        EditProductDialog(
+            initial = prod,
+            saving = savingEdit,
+            error = editError,
+            onDismiss = { if (!savingEdit) { editingProduct = null; editError = null } },
+            onSave = { nombre, desc, prio, cant, precio, codigo ->
+                coroutineScope.launch {
+                    savingEdit = true; editError = null
+                    val body = mutableMapOf<String, Any?>(
+                        "nombre" to nombre, "cantidad" to cant, "prioridad" to prio,
+                        "precio_estimado_unitario" to precio
+                    )
+                    if (desc.isNotBlank()) body["descripcion"] = desc
+                    if (codigo.isNotBlank()) body["codigo_producto"] = codigo
+                    when (val r = shoppingRepo.updateProducto(prod.id, body)) {
+                        is com.example.canasta_frontend.data.repository.RepoResult.Ok -> {
+                            val gid = activeGroupId ?: return@launch
+                            val gl = (cachedListasByGroup[gid] ?: emptyList()).map { l ->
+                                if (l.id == listId) l.copy(productos = l.productos.map {
+                                    if (it.id == prod.id) it.copy(nombre = r.value.nombre, descripcion = r.value.descripcion, prioridad = r.value.prioridad, cantidad = r.value.cantidad, precioUnitario = r.value.precio_estimado_unitario ?: 0, codigoProducto = r.value.codigo_producto) else it
+                                }) else l
+                            }
+                            cachedListasByGroup[gid] = gl
+                            uiState = SyncUiState.Content(data = gl, hasLocalData = true)
+                            onDataChanged()
+                            editingProduct = null
+                            Toast.makeText(context, "Producto actualizado", Toast.LENGTH_SHORT).show()
+                        }
+                        is com.example.canasta_frontend.data.repository.RepoResult.Err -> editError = r.message
+                    }
+                    savingEdit = false
+                }
+            }
+        )
+    }
+
+    val editLid = editingListId
+    if (editLid != null) {
+        val lista = (cachedListasByGroup[activeGroupId] ?: emptyList()).find { it.id == editLid }
+        if (lista != null) {
+            EditListDialog(
+                initialName = lista.nombre,
+                initialDesc = lista.descripcion ?: "",
+                saving = savingEdit,
+                error = editError,
+                onDismiss = { if (!savingEdit) { editingListId = null; editError = null } },
+                onSave = { nombre, desc ->
+                    coroutineScope.launch {
+                        savingEdit = true; editError = null
+                        when (val r = shoppingRepo.updateLista(editLid, nombre, desc.ifBlank { "" })) {
+                            is com.example.canasta_frontend.data.repository.RepoResult.Ok -> {
+                                val gid = activeGroupId ?: return@launch
+                                val gl = (cachedListasByGroup[gid] ?: emptyList()).map {
+                                    if (it.id == editLid) it.copy(nombre = r.value.nombre, descripcion = r.value.descripcion) else it
+                                }
+                                cachedListasByGroup[gid] = gl
+                                uiState = SyncUiState.Content(data = gl, hasLocalData = true)
+                                editingListId = null
+                                Toast.makeText(context, "Lista actualizada", Toast.LENGTH_SHORT).show()
+                            }
+                            is com.example.canasta_frontend.data.repository.RepoResult.Err -> editError = r.message
+                        }
+                        savingEdit = false
+                    }
+                }
+            )
+        }
     }
 }

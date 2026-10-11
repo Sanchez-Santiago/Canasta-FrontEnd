@@ -5,13 +5,14 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.canasta_frontend.ui.theme.*
@@ -69,8 +70,8 @@ fun AddProductDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Prioridad selector
-                Text(text = "Prioridad del producto *", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                // Prioridad selector — mismos colores que finanzas: esencial/primario/secundario
+                Text(text = "Prioridad *", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -85,11 +86,11 @@ fun AddProductDialog(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(if (isSelected) color.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceVariant)
-                                .border(1.dp, if (isSelected) color else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                                .border(1.dp, if (isSelected) color else MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp))
                                 .clickable { prioridad = key }
-                                .padding(vertical = 6.dp),
+                                .padding(vertical = 8.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -108,9 +109,11 @@ fun AddProductDialog(
                 ) {
                     OutlinedTextField(
                         value = cantidad,
-                        onValueChange = { cantidad = it },
+                        onValueChange = { v -> cantidad = v.filter { it.isDigit() || it == '.' } },
                         label = { Text("Cantidad", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        placeholder = { Text("1", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         colors = textFieldColors(),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1f)
@@ -118,9 +121,11 @@ fun AddProductDialog(
 
                     OutlinedTextField(
                         value = precioUnitario,
-                        onValueChange = { precioUnitario = it },
+                        onValueChange = { v -> precioUnitario = v.filter { it.isDigit() } },
                         label = { Text("Precio est. ($)", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        placeholder = { Text("1000", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         colors = textFieldColors(),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1f)

@@ -328,6 +328,7 @@ fun CanastaNavGraph() {
                                     "perfil" -> PerfilScreen(
                                         isDarkTheme = isDarkTheme,
                                         activeGroupId = activeGroupId,
+                                        groupName = groupName,
                                         onToggleTheme = { dark ->
                                             coroutineScope.launch {
                                                 themePreferences.setThemeMode(if (dark) ThemeMode.DARK else ThemeMode.LIGHT)
@@ -335,6 +336,15 @@ fun CanastaNavGraph() {
                                         },
                                         onInviteClick = { showInviteDialog = true },
                                         onNotificationsClick = { showNotifications = true },
+                                        onGroupChanged = { refreshTrigger++ },
+                                        onAbandoned = {
+                                            modoGrupo = "personal"
+                                            activeGroupId = null
+                                            groupName = "Canasta Personal"
+                                            currentRoute = "resumen"
+                                            refreshTrigger++
+                                            persistSelection()
+                                        },
                                         onLogout = {
                                             SecureTokenManager(context).clearToken()
                                             coroutineScope.launch { try { groupPreferences.clear() } catch (_: Exception) { } }

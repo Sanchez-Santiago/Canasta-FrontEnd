@@ -10,7 +10,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,20 +34,33 @@ import kotlinx.coroutines.launch
 fun PerfilScreen(
     isDarkTheme: Boolean = true,
     activeGroupId: Long? = null,
+    groupName: String = "",
     onToggleTheme: (Boolean) -> Unit = {},
     onInviteClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
+    onGroupChanged: () -> Unit = {},
+    onAbandoned: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
+    val groupsRepo = remember(context) { com.example.canasta_frontend.data.repository.GroupsRepository(context) }
 
     var usuario by remember { mutableStateOf<UsuarioEntity?>(null) }
     var miembros by remember { mutableStateOf<List<MiembroModel>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var showEditName by remember { mutableStateOf(false) }
     var showPassword by remember { mutableStateOf(false) }
+    var showEditGroup by remember { mutableStateOf(false) }
+    var confirmAbandon by remember { mutableStateOf(false) }
+    var expelTarget by remember { mutableStateOf<MiembroModel?>(null) }
+    var actionError by remember { mutableStateOf<String?>(null) }
+    var savingGroup by remember { mutableStateOf(false) }
+
+    val myRole = miembros.find { it.email.equals(usuario?.email ?: "", ignoreCase = true) }?.rol
+    val isAdmin = myRole == "administrador" && activeGroupId != null
+    val isGrupal = activeGroupId != null
 
     fun reloadUser() {
         scope.launch {
@@ -54,7 +69,7 @@ fun PerfilScreen(
                 val user = api.getYo().data?.usuario
                 if (user != null) {
                     usuario = user
-                    miembros = listOf(MiembroModel(user.nombre, user.email, "administrador"))
+                    miembros = listOf(MiembroModel(id = user.id_usuario, nombre = user.nombre, email = user.email, rol = "administrador"))
                 }
                 if (activeGroupId != null) {
                     try {
@@ -65,7 +80,8 @@ fun PerfilScreen(
                                 val n = (mm["nombre"] as? String) ?: (mm["email"] as? String) ?: return@mapNotNull null
                                 val e = (mm["email"] as? String) ?: ""
                                 val r = (mm["rol"] as? String) ?: "miembro"
-                                MiembroModel(n, e, r)
+                                val id = (mm["id_usuario"] as? Number)?.toLong()
+                                MiembroModel(id = id, nombre = n, email = e, rol = r)
                             }
                         }
                     } catch (_: Exception) { }
@@ -74,7 +90,7 @@ fun PerfilScreen(
         }
     }
 
-    LaunchedEffect(Unit) { reloadUser() }
+    LaunchedEffect(activeGroupId) { reloadUser() }
 
     Column(
         modifier = Modifier
@@ -85,9 +101,7 @@ fun PerfilScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-            }
+            com.example.canasta_frontend.ui.components.ProfileSkeleton()
         } else {
             PerfilHeader(
                 nombre = usuario?.nombre,
@@ -95,7 +109,8 @@ fun PerfilScreen(
                 localidad = usuario?.localidad ?: usuario?.provincia
             )
 
-            // Members Section
+            // Members Section — solo grupal (en individual se oculta todo)
+            if (isGrupal) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -112,30 +127,66 @@ fun PerfilScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "Integrantes del Grupo", color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Button(
-                            onClick = onInviteClick,
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
-                                Text(text = "Invitar", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Column {
+                            Text(text = "Integrantes del Grupo", color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            if (groupName.isNotBlank()) Text(groupName, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            if (isAdmin) {
+                                OutlinedButton(
+                                    onClick = { showEditGroup = true },
+                                    modifier = Modifier.size(40.dp),
+                                    contentPadding = PaddingValues(0.dp),
+                                    shape = androidx.compose.foundation.shape.CircleShape
+                                ) { Icon(imageVector = Icons.Default.Edit, contentDescription = "Editar grupo", modifier = Modifier.size(18.dp)) }
+                            }
+                            Button(
+                                onClick = onInviteClick,
+                                modifier = Modifier.size(40.dp),
+                                contentPadding = PaddingValues(0.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), contentColor = MaterialTheme.colorScheme.primary),
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            ) {
+                                Icon(imageVector = Icons.Default.PersonAdd, contentDescription = "Invitar integrante", modifier = Modifier.size(18.dp))
                             }
                         }
                     }
+
+                    if (actionError != null) Text(actionError!!, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
 
                     if (miembros.isEmpty()) {
                         Text(text = "No hay integrantes cargados.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             miembros.forEach { miembro ->
-                                PerfilMiembroItem(miembro = miembro)
+                                val isSelf = miembro.email.equals(usuario?.email ?: "", ignoreCase = true)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        PerfilMiembroItem(miembro = miembro)
+                                    }
+                                    if (isAdmin && !isSelf && miembro.id != null) {
+                                        TextButton(onClick = { expelTarget = miembro }) {
+                                            Text("Quitar", color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
+
+                    OutlinedButton(
+                        onClick = { confirmAbandon = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) { Text("Abandonar grupo", fontSize = 13.sp) }
                 }
+            }
             }
 
             // Settings Card
@@ -152,29 +203,29 @@ fun PerfilScreen(
                 ) {
                     Text(text = "Ajustes del Sistema", color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold, fontSize = 14.sp)
 
-                    // Theme Mode Selector
-                    Text(text = "Apariencia y Tema", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                    // Theme Mode Selector — icon-only
+                    Text(text = "Apariencia", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        listOf("dark" to "🌙 Modo Oscuro", "light" to "☀️ Modo Claro").forEach { (modeKey, label) ->
+                        listOf("dark" to Icons.Default.DarkMode, "light" to Icons.Default.LightMode).forEach { (modeKey, icon) ->
                             val isSelected = (modeKey == "dark" && isDarkTheme) || (modeKey == "light" && !isDarkTheme)
+                            val label = if (modeKey == "dark") "Modo oscuro" else "Modo claro"
                             Box(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(10.dp))
+                                    .size(48.dp)
+                                    .clip(androidx.compose.foundation.shape.CircleShape)
                                     .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceVariant)
-                                    .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp))
-                                    .clickable { onToggleTheme(modeKey == "dark") }
-                                    .padding(vertical = 10.dp),
+                                    .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, androidx.compose.foundation.shape.CircleShape)
+                                    .clickable { onToggleTheme(modeKey == "dark") },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = label,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = label,
+                                    tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                         }
@@ -206,24 +257,6 @@ fun PerfilScreen(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start, verticalAlignment = Alignment.CenterVertically) {
                             Spacer(modifier = Modifier.width(2.dp))
                             Text(text = "Cambiar contraseña", fontSize = 13.sp)
-                        }
-                    }
-
-                    OutlinedButton(
-                        onClick = onNotificationsClick,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onBackground),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(imageVector = Icons.Default.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(text = "Centro de Notificaciones", fontSize = 13.sp)
                         }
                     }
 
@@ -313,6 +346,90 @@ fun PerfilScreen(
                     OutlinedTextField(value = confirm, onValueChange = { confirm = it }, label = { Text("Confirmar") }, singleLine = true, modifier = Modifier.fillMaxWidth(), visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
                 }
             }
+        )
+    }
+
+    if (showEditGroup && activeGroupId != null) {
+        var nombre by remember { mutableStateOf(groupName) }
+        var descripcion by remember { mutableStateOf("") }
+        var err by remember { mutableStateOf<String?>(null) }
+        AlertDialog(
+            onDismissRequest = { if (!savingGroup) showEditGroup = false },
+            title = { Text("Editar grupo") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (err != null) Text(err!!, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                    OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                    OutlinedTextField(value = descripcion, onValueChange = { descripcion = it }, label = { Text("Descripción") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                    Text("Solo el administrador puede editar. El personal no se modifica.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (nombre.trim().length < 2) { err = "Mínimo 2 caracteres"; return@Button }
+                    scope.launch {
+                        savingGroup = true; err = null
+                        when (val r = groupsRepo.updateGrupo(activeGroupId, nombre.trim(), descripcion.trim().ifBlank { "" }, null)) {
+                            is com.example.canasta_frontend.data.repository.RepoResult.Ok -> {
+                                showEditGroup = false; onGroupChanged()
+                                android.widget.Toast.makeText(context, "Grupo actualizado", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                            is com.example.canasta_frontend.data.repository.RepoResult.Err -> err = r.message
+                        }
+                        savingGroup = false
+                    }
+                }, enabled = !savingGroup) { Text(if (savingGroup) "Guardando..." else "Guardar") }
+            },
+            dismissButton = { TextButton(onClick = { showEditGroup = false }, enabled = !savingGroup) { Text("Cancelar") } }
+        )
+    }
+
+    val target = expelTarget
+    if (target != null && activeGroupId != null && target.id != null) {
+        AlertDialog(
+            onDismissRequest = { expelTarget = null },
+            title = { Text("Quitar miembro") },
+            text = { Text("Se quita a '${target.nombre}' del grupo. Solo admin.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        when (val r = groupsRepo.expulsarMiembro(activeGroupId, target.id)) {
+                            is com.example.canasta_frontend.data.repository.RepoResult.Ok -> {
+                                expelTarget = null; reloadUser(); onGroupChanged()
+                                android.widget.Toast.makeText(context, "Miembro eliminado", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                            is com.example.canasta_frontend.data.repository.RepoResult.Err -> {
+                                actionError = r.message; expelTarget = null
+                            }
+                        }
+                    }
+                }) { Text("Quitar", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { expelTarget = null }) { Text("Cancelar") } }
+        )
+    }
+
+    if (confirmAbandon && activeGroupId != null) {
+        AlertDialog(
+            onDismissRequest = { confirmAbandon = false },
+            title = { Text("Abandonar grupo") },
+            text = { Text("Salís del grupo '$groupName'. Tus listas de ese grupo dejan de verse. Si sos el último admin, primero eliminá el grupo.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        when (val r = groupsRepo.abandonarGrupo(activeGroupId)) {
+                            is com.example.canasta_frontend.data.repository.RepoResult.Ok -> {
+                                confirmAbandon = false; onAbandoned()
+                                android.widget.Toast.makeText(context, "Saliste del grupo", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                            is com.example.canasta_frontend.data.repository.RepoResult.Err -> {
+                                actionError = r.message; confirmAbandon = false
+                            }
+                        }
+                    }
+                }) { Text("Abandonar", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmAbandon = false }) { Text("Cancelar") } }
         )
     }
 }

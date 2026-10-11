@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.canasta_frontend.data.database.CanastaDatabase
 import com.example.canasta_frontend.data.database.entity.MovimientoEntity
 import com.example.canasta_frontend.data.network.RetrofitClient
+import com.example.canasta_frontend.data.network.parseBackendError
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 
@@ -33,5 +34,21 @@ class MovementsRepository(private val context: Context) {
                 try { db?.movimientoDao()?.insertMovimiento(created) } catch (_: Exception) { }
             }
         } catch (_: Exception) { }
+    }
+
+    suspend fun updateMovimiento(idMov: Long, body: Map<String, Any?>): RepoResult<MovimientoEntity> {
+        return try {
+            val resp = api.updateMovimiento(idMov, body)
+            val m = resp.data?.movimiento ?: return RepoResult.Err("Sin respuesta")
+            try { db?.movimientoDao()?.insertMovimiento(m) } catch (_: Exception) { }
+            RepoResult.Ok(m)
+        } catch (e: Exception) { RepoResult.Err(parseBackendError(e)) }
+    }
+
+    suspend fun deleteMovimiento(idMov: Long): RepoResult<Unit> {
+        return try {
+            val resp = api.deleteMovimiento(idMov)
+            if (resp.isSuccessful) RepoResult.Ok(Unit) else RepoResult.Err("No se pudo eliminar (${resp.code()})")
+        } catch (e: Exception) { RepoResult.Err(parseBackendError(e)) }
     }
 }

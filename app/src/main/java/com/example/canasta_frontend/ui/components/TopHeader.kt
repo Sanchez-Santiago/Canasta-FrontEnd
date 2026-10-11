@@ -36,12 +36,16 @@ fun TopHeader(
     onInviteClick: () -> Unit = {}
 ) {
     val cs = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
     Surface(
         color = cs.surface,
-        tonalElevation = 0.dp,
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(width = 1.dp, color = cs.outline, shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
+        tonalElevation = 2.dp,
+        shadowElevation = 6.dp,
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, cs.outline),
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
@@ -164,9 +168,9 @@ fun TopHeader(
                 Row(
                     modifier = Modifier
                         .weight(1f)
-                        .height(40.dp)
-                        .background(cs.surfaceVariant, RoundedCornerShape(12.dp))
-                        .border(1.dp, cs.outline, RoundedCornerShape(12.dp))
+                        .height(44.dp)
+                        .background(cs.surfaceVariant, CircleShape)
+                        .border(1.dp, cs.outline, CircleShape)
                         .padding(3.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -174,92 +178,57 @@ fun TopHeader(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clip(RoundedCornerShape(9.dp))
+                            .clip(CircleShape)
                             .background(if (modoGrupo == "personal") cs.primary else cs.surfaceVariant)
                             .clickable { onModoChange("personal") },
                         contentAlignment = Alignment.Center
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = "Individual",
-                                tint = if (modoGrupo == "personal") cs.onPrimary else cs.onSurfaceVariant,
-                                modifier = Modifier.size(15.dp)
-                            )
-                            Text(
-                                text = "Individual",
-                                color = if (modoGrupo == "personal") cs.onPrimary else cs.onSurfaceVariant,
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Individual",
+                            tint = if (modoGrupo == "personal") cs.onPrimary else cs.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
 
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clip(RoundedCornerShape(9.dp))
+                            .clip(CircleShape)
                             .background(if (modoGrupo == "grupal") cs.primary else cs.surfaceVariant)
                             .clickable { onModoChange("grupal") },
                         contentAlignment = Alignment.Center
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Group,
-                                contentDescription = "Grupal",
-                                tint = if (modoGrupo == "grupal") cs.onPrimary else cs.onSurfaceVariant,
-                                modifier = Modifier.size(15.dp)
-                            )
-                            Text(
-                                text = "Grupal",
-                                color = if (modoGrupo == "grupal") cs.onPrimary else cs.onSurfaceVariant,
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Group,
+                            contentDescription = "Grupal",
+                            tint = if (modoGrupo == "grupal") cs.onPrimary else cs.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
 
                 if (modoGrupo == "grupal") {
-                    OutlinedButton(
+                    IconButton(
                         onClick = onGroupClick,
-                        modifier = Modifier.height(40.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(containerColor = cs.surfaceVariant, contentColor = cs.onBackground),
-                        border = BorderStroke(1.dp, cs.outline),
-                        shape = RoundedCornerShape(12.dp)
+                        modifier = Modifier.size(44.dp).background(cs.surfaceVariant, CircleShape).border(1.dp, cs.outline, CircleShape)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(text = groupName, style = MaterialTheme.typography.bodySmall, maxLines = 1, modifier = Modifier.widthIn(max = 90.dp))
-                            Icon(imageVector = Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(15.dp))
-                        }
+                        Icon(imageVector = Icons.Default.KeyboardArrowDown, contentDescription = groupName, tint = cs.onBackground, modifier = Modifier.size(18.dp))
                     }
 
                     Button(
                         onClick = onInviteClick,
-                        modifier = Modifier.height(40.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        modifier = Modifier.size(44.dp),
+                        contentPadding = PaddingValues(0.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = cs.primary, contentColor = cs.onPrimary),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = CircleShape
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(14.dp))
-                            Text(text = "Invitar", style = MaterialTheme.typography.labelLarge)
-                        }
+                        Icon(imageVector = Icons.Default.PersonAdd, contentDescription = "Invitar", modifier = Modifier.size(18.dp))
                     }
                 }
             }
         }
+    }
     }
 }

@@ -3,7 +3,6 @@ package com.example.canasta_frontend.ui.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,9 +33,8 @@ fun BentoHeroCard(
     modifier: Modifier = Modifier
 ) {
     val cs = MaterialTheme.colorScheme
-    val isDark = isSystemInDarkTheme()
-    // Si el tema se fuerza por CanastaTheme, isSystem puede mentir; usamos luminance del background
-    val dark = cs.background.red + cs.background.green + cs.background.blue < 1.5f || isDark
+    // Solo luminancia del background: respeta tema forzado claro/oscuro
+    val dark = cs.background.red + cs.background.green + cs.background.blue < 1.5f
 
     val balance = totalIngresos - totalGastos
     val disponible = maxOf(0, balance)
@@ -154,7 +152,7 @@ fun BentoHeroCard(
                         )
                         // track
                         drawArc(
-                            color = cDisponible.copy(alpha = 0.12f),
+                            color = cs.onSurfaceVariant.copy(alpha = 0.20f),
                             startAngle = 0f, sweepAngle = 360f, useCenter = false,
                             topLeft = Offset(center.x - r, center.y - r),
                             size = Size(r * 2f, r * 2f),
@@ -271,8 +269,8 @@ private fun DonutLegend(modifier: Modifier, dot: androidx.compose.ui.graphics.Co
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(cs.surfaceVariant.copy(alpha = 0.7f))
-            .border(1.dp, cs.outline.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+            .background(cs.surface)
+            .border(1.dp, cs.outline, RoundedCornerShape(12.dp))
             .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
@@ -288,6 +286,21 @@ private fun DonutLegend(modifier: Modifier, dot: androidx.compose.ui.graphics.Co
 @Composable
 fun BentoHeroCardPreview() {
     CanastaTheme(darkTheme = true) {
+        Box(modifier = Modifier.padding(16.dp)) {
+            BentoHeroCard(
+                groupName = "Canasta Personal",
+                totalIngresos = 850000,
+                totalGastos = 45000,
+                estimadoGastar = 25000
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFFF8FAFC)
+@Composable
+fun BentoHeroCardLightPreview() {
+    CanastaTheme(darkTheme = false) {
         Box(modifier = Modifier.padding(16.dp)) {
             BentoHeroCard(
                 groupName = "Canasta Personal",
