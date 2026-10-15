@@ -6,14 +6,14 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "movimientos")
 data class MovimientoEntity(
     @PrimaryKey val id_movimiento: Long,
-    val id_usuario_creador: Long,
+    val id_usuario_creador: Long? = null,
     val id_grupo: Long,
-    val nombre: String,
-    val monto: Int, // INTEGER centavos
+    val nombre: String? = null,
+    val monto: Int = 0, // INTEGER centavos
     val descripcion: String? = null,
-    val tipo: String, // "ingreso" u "gasto"
+    val tipo: String? = null, // "ingreso" u "gasto"
     val categoria: String? = null,
     val foto_url: String? = null,
-    val fecha_movimiento: String,
-    val fecha_creacion: String
+    val fecha_movimiento: String? = null,
+    val fecha_creacion: String? = null
 )

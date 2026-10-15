@@ -197,7 +197,7 @@ fun GroupSelectorModal(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(text = grupo.nombre, color = cs.onBackground, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        Text(text = grupo.nombre ?: "Sin nombre", color = cs.onBackground, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                         if (!grupo.descripcion.isNullOrEmpty()) {
                                             Text(text = grupo.descripcion, color = cs.onSurfaceVariant, fontSize = 11.sp, maxLines = 1)
                                         }

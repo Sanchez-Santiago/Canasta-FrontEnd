@@ -147,10 +147,10 @@ fun NotificacionesScreen(
                             colors = CardDefaults.cardColors(containerColor = cs.surface)
                         ) {
                             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(n.titulo, style = MaterialTheme.typography.titleSmall, color = cs.onBackground)
-                                Text(n.tipo, style = MaterialTheme.typography.labelSmall, color = cs.primary)
+                                Text(n.titulo ?: "", style = MaterialTheme.typography.titleSmall, color = cs.onBackground)
+                                Text(n.tipo ?: "", style = MaterialTheme.typography.labelSmall, color = cs.primary)
                                 if (!n.descripcion.isNullOrBlank()) Text(n.descripcion, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-                                Text(n.fecha_creacion, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                                Text(n.fecha_creacion ?: "", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
                             }
                         }
                     }

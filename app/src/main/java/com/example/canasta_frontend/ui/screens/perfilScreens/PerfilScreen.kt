@@ -69,7 +69,7 @@ fun PerfilScreen(
                 val user = api.getYo().data?.usuario
                 if (user != null) {
                     usuario = user
-                    miembros = listOf(MiembroModel(id = user.id_usuario, nombre = user.nombre, email = user.email, rol = "administrador"))
+                    miembros = listOf(MiembroModel(id = user.id_usuario, nombre = user.nombre ?: "Usuario", email = user.email ?: "", rol = "administrador"))
                 }
                 if (activeGroupId != null) {
                     try {

@@ -36,14 +36,14 @@ fun OfertasScreen() {
             ofertas = remoteOfertas.map { o ->
                 OfertaModel(
                     id = o.id_oferta,
-                    productoNombre = o.nombre_comercio,
-                    comercio = o.nombre_comercio,
+                    productoNombre = o.nombre_comercio ?: "",
+                    comercio = o.nombre_comercio ?: "",
                     localidad = o.localidad ?: "Córdoba Capital",
                     porcentajeDescuento = o.porcentaje_descuento ?: 0.0,
                     precioOriginal = o.precio_original ?: 0,
                     precioOferta = o.precio_oferta ?: 0,
                     prioridad = "esencial",
-                    fechaFin = o.fecha_fin
+                    fechaFin = o.fecha_fin ?: ""
                 )
             }
         } catch (_: Exception) {

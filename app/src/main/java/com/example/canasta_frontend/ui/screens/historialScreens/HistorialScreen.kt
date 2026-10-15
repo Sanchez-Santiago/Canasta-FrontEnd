@@ -64,13 +64,13 @@ fun HistorialScreen(
                     remote.map { m ->
                         MovimientoModel(
                             id = m.id_movimiento,
-                            nombre = m.nombre,
+                            nombre = m.nombre ?: "Movimiento",
                             descripcion = m.descripcion ?: "",
                             monto = m.monto,
-                            tipo = m.tipo,
+                            tipo = m.tipo ?: "gasto",
                             categoria = m.categoria ?: "General",
                             usuario = "Santiago",
-                            fecha = m.fecha_movimiento
+                            fecha = m.fecha_movimiento ?: ""
                         )
                     }
                 },
@@ -252,7 +252,7 @@ fun HistorialScreen(
                         fecha_creacion = "2025-04-02"
                     )
                     movementsRepo.saveMovimiento(entity)
-                    val model = MovimientoModel(entity.id_movimiento, entity.nombre, entity.descripcion ?: "", entity.monto, entity.tipo, entity.categoria ?: cat, "Santiago", entity.fecha_movimiento)
+                    val model = MovimientoModel(entity.id_movimiento, entity.nombre ?: "Movimiento", entity.descripcion ?: "", entity.monto, entity.tipo ?: "gasto", entity.categoria ?: cat, "Santiago", entity.fecha_movimiento ?: "")
                     val updated = listOf(model) + (cachedMovimientosByGroup[targetGroup] ?: emptyList())
                     cachedMovimientosByGroup[targetGroup] = updated
                     uiState = SyncUiState.Content(data = updated, hasLocalData = true)
@@ -278,7 +278,7 @@ fun HistorialScreen(
                         is com.example.canasta_frontend.data.repository.RepoResult.Ok -> {
                             val gid = activeGroupId ?: return@launch
                             val gl = (cachedMovimientosByGroup[gid] ?: emptyList()).map {
-                                if (it.id == editM.id) it.copy(nombre = r.value.nombre, descripcion = r.value.descripcion ?: "", monto = r.value.monto, categoria = r.value.categoria ?: cat) else it
+                                if (it.id == editM.id) it.copy(nombre = r.value.nombre ?: "", descripcion = r.value.descripcion ?: "", monto = r.value.monto, categoria = r.value.categoria ?: cat) else it
                             }
                             cachedMovimientosByGroup[gid] = gl
                             uiState = SyncUiState.Content(data = gl, hasLocalData = true)

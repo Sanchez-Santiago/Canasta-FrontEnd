@@ -8,7 +8,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
-    private const val BASE_URL = "https://canasta-backend-v2gx.onrender.com/"
+    private const val BASE_URL = "http://85.190.254.4:3000/"
 
     fun createService(context: Context): CanastaApiService {
         val logging = HttpLoggingInterceptor().apply {

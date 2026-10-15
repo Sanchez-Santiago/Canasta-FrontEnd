@@ -83,20 +83,20 @@ fun CanastaScreen(
                         val prodsResp = try { api.getProductos(l.id_lista).data?.productos ?: emptyList() } catch (_: Exception) { emptyList() }
                         ListaModel(
                             id = l.id_lista,
-                            nombre = l.nombre,
+                            nombre = l.nombre ?: "",
                             descripcion = l.descripcion ?: "",
-                            estado = l.estado,
+                            estado = l.estado ?: "activa",
                             creador = "Miembro",
                             productos = prodsResp.map { p ->
                                 ProductoModel(
                                     id = p.id_producto_lista,
-                                    nombre = p.nombre,
+                                    nombre = p.nombre ?: "",
                                     descripcion = p.descripcion,
-                                    prioridad = p.prioridad,
+                                    prioridad = p.prioridad ?: "secundario",
                                     cantidad = p.cantidad,
                                     precioUnitario = p.precio_estimado_unitario ?: 0,
                                     codigoProducto = p.codigo_producto,
-                                    estado = p.estado
+                                    estado = p.estado ?: "pendiente"
                                 )
                             }
                         )
@@ -304,7 +304,7 @@ fun CanastaScreen(
                                                 val gl2 = (cachedListasByGroup[gid] ?: emptyList()).toMutableList()
                                                 val li2 = gl2.indexOfFirst { it.id == listId }
                                                 if (li2 != -1) {
-                                                    val prods = gl2[li2].productos.map { if (it.id == prodId) it.copy(estado = updated.estado) else it }
+                                                    val prods = gl2[li2].productos.map { if (it.id == prodId) it.copy(estado = updated.estado ?: "pendiente") else it }
                                                     gl2[li2] = gl2[li2].copy(productos = prods)
                                                     cachedListasByGroup[gid] = gl2.toList()
                                                     uiState = SyncUiState.Content(data = gl2.toList(), hasLocalData = true)
@@ -392,7 +392,7 @@ fun CanastaScreen(
                     val targetGroup = activeGroupId
                     val created = shoppingRepo.saveLista(targetGroup, name, desc.ifBlank { null })
                     if (created != null) {
-                        val model = ListaModel(created.id_lista, created.nombre, created.descripcion ?: "", created.estado, "Santiago", emptyList())
+                        val model = ListaModel(created.id_lista, created.nombre ?: "", created.descripcion ?: "", created.estado ?: "activa", "Santiago", emptyList())
                         val updated = listOf(model) + (cachedListasByGroup[targetGroup] ?: emptyList())
                         cachedListasByGroup[targetGroup] = updated
                         expandedListId = model.id
@@ -424,7 +424,7 @@ fun CanastaScreen(
                         codigoProducto = code.ifBlank { null }
                     )
                     if (created != null) {
-                        val prodModel = ProductoModel(created.id_producto_lista, created.nombre, created.descripcion, created.prioridad, created.cantidad, created.precio_estimado_unitario ?: 0, created.codigo_producto, created.estado)
+                        val prodModel = ProductoModel(created.id_producto_lista, created.nombre ?: "", created.descripcion, created.prioridad ?: "secundario", created.cantidad, created.precio_estimado_unitario ?: 0, created.codigo_producto, created.estado ?: "pendiente")
                         val gid = activeGroupId ?: return@launch
                         val groupList = (cachedListasByGroup[gid] ?: emptyList()).toMutableList()
                         val idx = groupList.indexOfFirst { it.id == currentListId }
@@ -466,7 +466,7 @@ fun CanastaScreen(
                             val gid = activeGroupId ?: return@launch
                             val gl = (cachedListasByGroup[gid] ?: emptyList()).map { l ->
                                 if (l.id == listId) l.copy(productos = l.productos.map {
-                                    if (it.id == prod.id) it.copy(nombre = r.value.nombre, descripcion = r.value.descripcion, prioridad = r.value.prioridad, cantidad = r.value.cantidad, precioUnitario = r.value.precio_estimado_unitario ?: 0, codigoProducto = r.value.codigo_producto) else it
+                                    if (it.id == prod.id) it.copy(nombre = r.value.nombre ?: "", descripcion = r.value.descripcion, prioridad = r.value.prioridad ?: "secundario", cantidad = r.value.cantidad, precioUnitario = r.value.precio_estimado_unitario ?: 0, codigoProducto = r.value.codigo_producto) else it
                                 }) else l
                             }
                             cachedListasByGroup[gid] = gl
@@ -500,7 +500,7 @@ fun CanastaScreen(
                             is com.example.canasta_frontend.data.repository.RepoResult.Ok -> {
                                 val gid = activeGroupId ?: return@launch
                                 val gl = (cachedListasByGroup[gid] ?: emptyList()).map {
-                                    if (it.id == editLid) it.copy(nombre = r.value.nombre, descripcion = r.value.descripcion) else it
+                                    if (it.id == editLid) it.copy(nombre = r.value.nombre ?: "", descripcion = r.value.descripcion) else it
                                 }
                                 cachedListasByGroup[gid] = gl
                                 uiState = SyncUiState.Content(data = gl, hasLocalData = true)

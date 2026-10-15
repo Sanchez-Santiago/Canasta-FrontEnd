@@ -142,7 +142,7 @@ fun CanastaNavGraph() {
                 groupName = if (!targetGroup.nombre.isNullOrBlank()) targetGroup.nombre else "Canasta Personal"
                 activeGroupId = targetGroup.id_grupo
                 // cachear ubicación para el próximo arranque
-                try { groupPreferences.saveSelection(targetGroup.tipo, targetGroup.id_grupo, groupName) } catch (_: Exception) { }
+                try { groupPreferences.saveSelection(targetGroup.tipo ?: "personal", targetGroup.id_grupo, groupName) } catch (_: Exception) { }
                 presupuestoTotal = targetGroup.presupuesto_mensual?.toInt() ?: 0
 
                 val movResp = api.getMovimientos(targetGroup.id_grupo)
@@ -150,10 +150,10 @@ fun CanastaNavGraph() {
                 totalIngresos = movimientos.filter { it.tipo == "ingreso" }.sumOf { it.monto }
                 totalGastos = movimientos.filter { it.tipo == "gasto" }.sumOf { it.monto }
 
-                recentActivities = movimientos.sortedByDescending { it.fecha_creacion }.take(5).map { m ->
+                recentActivities = movimientos.sortedByDescending { it.fecha_creacion ?: "" }.take(5).map { m ->
                     ActivityModel(
-                        title = m.nombre,
-                        subtitle = m.fecha_movimiento,
+                        title = m.nombre ?: "Movimiento",
+                        subtitle = m.fecha_movimiento ?: "",
                         amount = (if (m.tipo == "ingreso") "+" else "-") + "$${m.monto}",
                         isIngreso = m.tipo == "ingreso"
                     )
@@ -282,8 +282,8 @@ fun CanastaNavGraph() {
                                 activeGroupId = null
                                 persistSelection()
                             },
-                            groupName = if (!groupName.isNullOrBlank()) groupName else "Canasta Personal",
-                            userName = if (!userName.isNullOrBlank()) userName else "Usuario",
+                            groupName = if (groupName.isNotBlank()) groupName else "Canasta Personal",
+                            userName = if (userName.isNotBlank()) userName else "Usuario",
                             unreadCount = unreadCount,
                             onGroupClick = { showGroupSelectorModal = true },
                             onNotificationClick = { showNotifications = true },
@@ -299,7 +299,7 @@ fun CanastaNavGraph() {
                             ) { tab ->
                                 when (tab) {
                                     "resumen" -> ResumenScreen(
-                                        groupName = if (!groupName.isNullOrBlank()) groupName else "Canasta Personal",
+                                        groupName = if (groupName.isNotBlank()) groupName else "Canasta Personal",
                                         modoGrupo = modoGrupo,
                                         hasGrupalGroups = hasGrupalGroups,
                                         presupuestoTotal = presupuestoTotal,
@@ -354,7 +354,7 @@ fun CanastaNavGraph() {
                                         }
                                     )
                                     else -> ResumenScreen(
-                                        groupName = if (!groupName.isNullOrBlank()) groupName else "Canasta Personal",
+                                        groupName = if (groupName.isNotBlank()) groupName else "Canasta Personal",
                                         modoGrupo = modoGrupo,
                                         hasGrupalGroups = hasGrupalGroups,
                                         presupuestoTotal = presupuestoTotal,
@@ -375,8 +375,8 @@ fun CanastaNavGraph() {
                                 startInCreate = false,
                                 onGroupSelected = { grupo ->
                                     activeGroupId = grupo.id_grupo
-                                    groupName = grupo.nombre
-                                    modoGrupo = grupo.tipo
+                                    groupName = grupo.nombre ?: "Canasta Personal"
+                                    modoGrupo = grupo.tipo ?: "grupal"
                                     hasGrupalGroups = true
                                     refreshTrigger++
                                     persistSelection()
@@ -391,8 +391,8 @@ fun CanastaNavGraph() {
                                 startInCreate = true,
                                 onGroupSelected = { grupo ->
                                     activeGroupId = grupo.id_grupo
-                                    groupName = grupo.nombre
-                                    modoGrupo = grupo.tipo
+                                    groupName = grupo.nombre ?: "Canasta Personal"
+                                    modoGrupo = grupo.tipo ?: "grupal"
                                     hasGrupalGroups = true
                                     refreshTrigger++
                                     persistSelection()
@@ -438,8 +438,8 @@ fun CanastaNavGraph() {
                                                         val g = RetrofitClient.createService(context).getGrupoById(inv.id_grupo).data?.grupo
                                                         if (g != null) {
                                                             activeGroupId = g.id_grupo
-                                                            groupName = g.nombre
-                                                            modoGrupo = g.tipo
+                                                            groupName = g.nombre ?: "Canasta Personal"
+                                                            modoGrupo = g.tipo ?: "grupal"
                                                             persistSelection()
                                                         }
                                                     } catch (_: Exception) { }

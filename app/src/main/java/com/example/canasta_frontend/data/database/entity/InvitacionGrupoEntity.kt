@@ -6,10 +6,10 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "invitacion_grupos")
 data class InvitacionGrupoEntity(
     @PrimaryKey val id_invitacion: Long,
-    val id_usuario_origen: Long,
-    val id_usuario_destino: Long,
+    val id_usuario_origen: Long? = null,
+    val id_usuario_destino: Long? = null,
     val id_grupo: Long,
-    val estado: String,
-    val fecha_creacion: String,
+    val estado: String? = null,
+    val fecha_creacion: String? = null,
     val fecha_respuesta: String? = null
 )

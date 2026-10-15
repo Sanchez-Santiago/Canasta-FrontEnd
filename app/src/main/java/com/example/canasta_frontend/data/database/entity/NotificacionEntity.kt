@@ -7,9 +7,9 @@ import androidx.room.PrimaryKey
 data class NotificacionEntity(
     @PrimaryKey val id_notificacion: Long,
     val id_grupo: Long,
-    val tipo: String,
-    val titulo: String,
+    val tipo: String? = null,
+    val titulo: String? = null,
     val descripcion: String? = null,
     val leida: Boolean = false,
-    val fecha_creacion: String
+    val fecha_creacion: String? = null
 )

@@ -7,11 +7,11 @@ import androidx.room.PrimaryKey
 data class ListaEntity(
     @PrimaryKey val id_lista: Long,
     val id_grupo: Long,
-    val id_usuario_creador: Long,
+    val id_usuario_creador: Long? = null,
     val id_usuario_administrador: Long? = null,
-    val nombre: String,
+    val nombre: String? = null,
     val descripcion: String? = null,
-    val estado: String,
-    val fecha_creacion: String,
-    val fecha_actualizacion: String
+    val estado: String? = null,
+    val fecha_creacion: String? = null,
+    val fecha_actualizacion: String? = null
 )
